@@ -1,5 +1,6 @@
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
+from langchain_qdrant import QdrantVectorStore
+import qdrant_client
 from langchain_community.document_loaders import PyMuPDFLoader
 from uuid import uuid4
 from dotenv import load_dotenv
@@ -8,7 +9,10 @@ import streamlit as st
 import plotly.graph_objs as go
 import os
 
+
 load_dotenv()
+QDRANT_URL = os.getenv('QDRANT_URL')
+QDRANT_API_KEY = os.getenv('QDRANT_API_KEY')
 
 embedding = OpenAIEmbeddings() 
 
@@ -31,21 +35,29 @@ def pdf_docs(uploaded_files):
     return all_pdf_docs
 
 
-def get_vector_store():
-        vector_store = Chroma(collection_name="Resume_collection",
-                          embedding_function=embedding,
-                          persist_directory="./chroma_langchain_db")
-        return vector_store
 
+def qdrant_vector_store(documents=None):
+    q_client = qdrant_client.QdrantClient(url=QDRANT_URL, prefer_grpc=True, api_key=QDRANT_API_KEY)
 
-def chroma_vector_store(documents=None):
-    vector_store = Chroma(collection_name="Resume_collection",
-                          embedding_function=embedding,
-                          persist_directory="./chroma_langchain_db")
-    if documents:
-        uuids = [str(uuid4()) for _ in range(len(documents))]
-        vector_store.add_documents(documents=documents)
-    return vector_store
+    qdrant = QdrantVectorStore.from_documents(documents,
+                               embedding, 
+                               url=QDRANT_URL,
+                               prefer_grpc=True,
+                               api_key=QDRANT_API_KEY,
+                               collection_name="Resume_similarity_score")
+
+    q_vectorstore = QdrantVectorStore(client=q_client,
+                     collection_name= "Resume_similarity_score",
+                     embedding= embedding,
+                                 )
+
+    # vector_store = Chroma(collection_name="Resume_collection",
+    #                       embedding_function=embedding,
+    #                       persist_directory="./chroma_langchain_db")
+    # if documents:
+    #     uuids = [str(uuid4()) for _ in range(len(documents))]
+    #     vector_store.add_documents(documents=documents)
+    return q_vectorstore
 
 
 
@@ -64,7 +76,7 @@ def similarity_search(vector_store, user_query, no_of_docs):
     cols = st.columns(num_cols)
 
     for i, (res, score) in enumerate(results):
-        file_name = res.metadata.get('file_name', 'Unknown File')
+        file_name = res.metadata.get('file_name', 'file_path')
         data[file_name] = {score * 100: {"page_content": res.page_content}}
         
         # Create a meter graph for each document
@@ -103,7 +115,7 @@ def similarity_search(vector_store, user_query, no_of_docs):
 
         # Plot in the current column
         with cols[i % num_cols]:
-            st.markdown(f"**<span style='color: black;'>{file_name}</span>**", unsafe_allow_html=True)
+            # st.markdown(f"**<span style='color: black;'>{file_name}</span>**", unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, key=f"plot_{file_name}")
     
     return data
@@ -112,13 +124,7 @@ def similarity_search(vector_store, user_query, no_of_docs):
 
 
 def delete_all_ids():
-    vector_store = get_vector_store()
-    ids = vector_store.get()['ids']
-    if not ids:
-        return {"message": "Vecotod Database is already empty, no IDs found. please add pdfs only"}
-    else:
-        vector_store.delete(ids)
-        return {"message": "All old IDs deleted successfully."}
+    q_client = qdrant_client.QdrantClient(url=QDRANT_URL, prefer_grpc=True, api_key=QDRANT_API_KEY)
+    q_client.delete_collection(collection_name="Resume_similarity_score")
 
-
-
+    return {"message": "OLD data deleted successfully."}
