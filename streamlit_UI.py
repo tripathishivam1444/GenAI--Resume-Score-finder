@@ -1,7 +1,13 @@
 import streamlit as st
 from streamlit_backend import pdf_docs, qdrant_vector_store, similarity_search, delete_all_ids
 
-import streamlit as st
+# Set custom tab title and favicon
+st.set_page_config(
+    page_title="Resume Score Finder",  # Custom tab title
+    page_icon=":page_facing_up:",  # Use emoji as favicon
+    # Alternatively, use a local file or URL for the icon
+    # page_icon="path/to/resume_icon.png",
+)
 
 def main():
     st.markdown("<h1 style='color:#800000;'>TRIPATHI   UTKARSH</h1>", unsafe_allow_html=True)
