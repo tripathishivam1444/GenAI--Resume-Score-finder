@@ -44,10 +44,10 @@ def qdrant_vector_store(documents=None):
                                url=QDRANT_URL,
                                prefer_grpc=True,
                                api_key=QDRANT_API_KEY,
-                               collection_name="Resume_similarity_score")
+                               collection_name="Oman_qdrant_db_cluster")
 
     q_vectorstore = QdrantVectorStore(client=q_client,
-                     collection_name= "Resume_similarity_score",
+                     collection_name= "Oman_qdrant_db_cluster",
                      embedding= embedding,
                                  )
 
